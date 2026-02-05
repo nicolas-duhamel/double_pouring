@@ -1,0 +1,353 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{bbm}
+\usepackage{microtype}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\bN}{\mathbb{N}}
+\newcommand{\bZ}{\mathbb{Z}}
+\newcommand{\bR}{\mathbb{R}}
+\newcommand{\cL}{\mathcal{L}}
+
+\title{The Double Pouring Problem: A Lattice Approach}
+\author{Nicolas Duhamel\footnote{nicolas.duhamel@laplateforme.io}}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The \emph{double pouring problem} starts from $k$ vessels containing integer amounts of water with total volume $n$.
+A single step selects two vessels with contents $x \le y$ and replaces them by $2x$ and $y-x$; the objective is to make at least one vessel empty in as few steps as possible.
+
+For $k=3$, Frei et al.~\cite{frei} gave an algorithm using $O((\log n)^2)$ steps and proved a lower bound of $\Omega(\log n)$.
+
+We present a \emph{semi-algorithm}: it may fail to terminate but whenever it terminates it does so in $O(\log n)$ steps.
+
+It remains to prove that there exists an appropriate choice of initialization that turns the semi-algorithm into a genuine algorithm, i.e., guarantees termination on all instances.
+\end{abstract}
+
+\section{Introduction}
+
+In the \emph{double pouring problem} we are given $k$ vessels containing integer volumes $a_1,\dots,a_k \in \bN$ with total volume
+$\sum_{i=1}^k a_i = n$.
+A \emph{pouring step} chooses two vessels with contents $x \le y$ and replaces them by
+\begin{equation*}
+(x,y) \longmapsto (2x,\,y-x),
+\end{equation*}
+leaving the other vessels unchanged.
+The process preserves the total volume, and the goal is to reach a configuration in which at least one vessel is empty.
+We are interested in the worst-case minimum number of steps as a function of $n$.
+
+We thank Ravi Boppana for introducing this problem to us; see also his presentation video~\cite{boppana-video}.
+
+The case $k=3$ is probably the more challenging.
+Frei et al.~\cite{frei} presented an algorithm requiring $O((\log n)^2)$ steps and proved a lower bound of $\Omega(\log n)$.
+
+We give an algorithm that experimentally achieves $O(\log n)$ steps.
+The key idea is to move from the physical view (updating vessel contents) to a ``dual'' view that tracks integer relations among the volumes.
+We show that a pouring sequence can be encoded by a vector in a rank-$2$ lattice naturally associated with the state $(a,b,c)$.
+
+
+\section{Earlier work}
+\label{sec:frei}
+
+We briefly summarize the results of Frei, Rossmanith, and Wehner~\cite{frei} on what they call the \emph{open pouring problem} (the case $k=3$ of the double pouring problem).
+For a fixed total volume $n$, let $N(n)$ denote the worst-case minimum number of pouring steps over all initial configurations $(a,b,c)\in\bN^3$ with $a+b+c=n$.
+
+\subsection{Bounds}
+
+Frei et al.~\cite{frei} established logarithmic lower bounds and a quadratic-logarithmic upper bound.
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Result} & \textbf{Bound for $N(n)$}\\
+\hline
+Upper bound & $O((\log n)^2)$\\
+Lower bound & $\Omega(\log n)$\\
+\hline
+\end{tabular}
+\caption{Asymptotic results for three vessels.}
+\end{table}
+
+The main remaining question raised by this gap was whether the true order is $\Theta(\log n)$, $\Theta((\log n)^2)$ or in between.
+
+\subsection{Frei's rounds algorithm}
+
+Frei et al.'s strategy proceeds in \emph{rounds}.
+Starting from an ordered state $0<a\le b\le c$, each round transforms the configuration so that the new minimum vessel is at most $a/2$, using at most $\log n + O(1)$ pouring steps.
+After $O(\log n)$ rounds the minimum becomes $0$, yielding a total of $O((\log n)^2)$ steps.
+
+The key subroutine in a round is controlled by the ratio $b/a$.
+Let $p=\lfloor b/a\rfloor$ and $q=\lceil b/a\rceil$ and consider the remainders
+\begin{equation*}
+ r_1=b-pa,\qquad r_2=qa-b.
+\end{equation*}
+One always has $\min(r_1,r_2)\le a/2$.
+Using the binary expansion of $p$ (or $q$), Frei et al. choose, at each step of the round, whether to pour from the second or third vessel into the smallest one.
+This forces the smallest vessel to double repeatedly while subtracting the appropriate amount from $b$ (or $c$), and the round ends with the new minimum equal to $r_1$ or $r_2$.
+
+A conceptual innovation of this approach (compared to earlier algorithm) is that each round divides the smallest vessel by $2$, rather than reducing it by an additive constant.
+
+\section{The Lattice Formulation}
+\label{sec:lattice}
+
+This section explains how to encode pouring sequences as short vectors in an integer lattice.
+While the game is defined by local moves on vessel contents, the key invariant is linear: each configuration $(a,b,c)$ determines a family of integer relations that remain compatible with the pouring operation.
+
+\subsection{A matrix viewpoint and invariants}
+
+Fix a state vector $\mathbf{v}=(a,b,c)\in\bN^3$.
+A pouring step picks two coordinates, say $x\le y$, and replaces them by $2x$ and $y-x$.
+Ignoring the ordering constraint $x\le y$ for the moment, the update on a chosen pair is an integer-linear map.
+For instance, if we pour from the first vessel into the second (so $(a,b)$ becomes $(2a, b-a)$), then
+\begin{equation*}
+(a,b,c) \longmapsto (2a,\,b-a,\,c).
+\end{equation*}
+This can be viewed as the action of the following matrix.
+\begin{equation*}
+M_{12}=
+\begin{pmatrix}
+2 & 0 & 0\\
+-1 & 1 & 0\\
+0 & 0 & 1
+\end{pmatrix}
+\in \mathrm{GL}_3(\bZ).
+\end{equation*}
+Analogous matrices describe the other pair choices.
+Thus, abstractly, the reachable states from $\mathbf{v}$ lie in the orbit of $\mathbf{v}$ under a set of transformations, with the additional feasibility constraint that the chosen pair must satisfy $x\le y$.
+
+\subsection{Algebraic reformulation}
+
+Let's consider coefficients $x,y,z\in\bZ$, not all zero, such that
+\begin{equation}\label{eq:linear}
+xa+yb+zc = 0.
+\end{equation}
+The relevance of \eqref{eq:linear} is twofold:
+(i) it identifies a rank-$2$ lattice of relations intrinsic to the input instance, and
+(ii) the pouring operation corresponds to simple update rules on the coefficient vector when one insists that \eqref{eq:linear} remain satisfied.
+
+\subsection{The orthogonal lattice and its basic structure}
+
+\begin{definition}[The orthogonal lattice]
+Given $\mathbf{v}=(a,b,c)\in\bN^3$, define
+\[
+\cL(\mathbf{v}) \;=\; \{(x,y,z)\in\bZ^3 : xa+yb+zc=0\} 
+\;=\; \mathbf{v}^\perp\cap\bZ^3.
+\]
+\end{definition}
+
+The real orthogonal complement $\mathbf{v}^\perp\subset\bR^3$ is a $2$-dimensional subspace.
+Intersecting with $\bZ^3$ yields a rank-$2$ sublattice $\cL(\mathbf{v})$.
+Geometrically, $\cL(\mathbf{v})$ is the set of all integer linear dependencies among the three vessel volumes.
+
+A convenient explicit basis can be obtained from two ``obvious'' relations:
+\begin{equation*}
+\mathbf{u}_1=(b,-a,0),\qquad \mathbf{u}_2=(c,0,-a),
+\end{equation*}
+since $\mathbf{u}_1\cdot\mathbf{v}=ba-ab=0$ and $\mathbf{u}_2\cdot\mathbf{v}=ca-ac=0$.
+
+\subsection{How pouring acts on coefficient vectors}
+
+The key link between pouring sequences and lattice vectors is that if a state update is given by a matrix $M\in\mathrm{GL}_3(\bZ)$, then integer relations transform by the inverse transpose.
+Indeed, if $\mathbf{v}'=M\mathbf{v}$ and $\mathbf{u}'=(M^{-1})^{\mathsf T}\mathbf{u}$, then
+\begin{equation*}
+\mathbf{u}'\cdot \mathbf{v}' = ((M^{-1})^{\mathsf T}\mathbf{u})\cdot(M\mathbf{v}) = \mathbf{u}\cdot\mathbf{v}.
+\end{equation*}
+Thus, maintaining the invariant $\mathbf{u}\cdot\mathbf{v}=0$ throughout a sequence amounts to applying simple integer updates to $\mathbf{u}$.
+For the update $M_{12}$ above one checks that
+\begin{equation*}
+(M_{12}^{-1})^{\mathsf T}=
+\begin{pmatrix}
+\tfrac12 & \tfrac12 & 0\\
+0 & 1 & 0\\
+0 & 0 & 1
+\end{pmatrix},
+\end{equation*}
+so the induced map on the first two coefficients is
+\begin{equation*}
+(x,y,z) \longmapsto \Bigl(\tfrac{x+y}{2},\,y,\,z\Bigr).
+\end{equation*}
+This operation is integral precisely when $x\equiv y\pmod 2$.
+Similar formulas hold for the other pairs.
+This explains the parity constraints that appear later in the algorithmic description.
+
+In summary, a physically feasible pouring step in the physical space corresponds to selecting a pair of indices and applying an averaging map to the corresponding coefficients in the dual space, subject to an integrality (parity) condition.
+
+\subsection{The Lagrange--Gauss algorithm (rank 2)}
+
+Because $\cL(\mathbf{v})$ has rank $2$, we can work in a fixed basis and identify coefficient vectors with points of $\bZ^2$.
+Equivalently, pick any integer basis $B=(\mathbf{b}_1,\mathbf{b}_2)$ of $\cL(\mathbf{v})$ and write
+\begin{equation*}
+\mathbf{u}=s\,\mathbf{b}_1+t\,\mathbf{b}_2,\qquad (s,t)\in\bZ^2.
+\end{equation*}
+Finding a good vector then becomes a two-dimensional shortest vector problem in the lattice generated by $B$.
+This is precisely the regime where lattice reduction is especially effective.
+
+Let $L\subset\bR^2$ be a two-dimensional lattice with basis vectors $\mathbf{b}_1,\mathbf{b}_2\in\bR^2$.
+The \emph{Lagrange--Gauss} reduction algorithm repeatedly applies the following operations:
+\begin{enumerate}
+    \item \textbf{Swap:} ensure $\|\mathbf{b}_1\|\le \|\mathbf{b}_2\|$ (otherwise exchange $\mathbf{b}_1$ and $\mathbf{b}_2$).
+    \item \textbf{Reduce:} set
+    \[
+    \mathbf{b}_2 \leftarrow \mathbf{b}_2 - q\,\mathbf{b}_1,
+    \qquad
+    q = \left\lfloor \frac{\langle \mathbf{b}_1,\mathbf{b}_2\rangle}{\|\mathbf{b}_1\|^2} \right\rceil,
+    \]
+    where $\lfloor\cdot\rceil$ denotes the nearest integer.
+\end{enumerate}
+This is the Euclidean algorithm applied to the Gram--Schmidt coefficient $\langle \mathbf{b}_1,\mathbf{b}_2\rangle/\|\mathbf{b}_1\|^2$.
+
+\paragraph{Optimality in rank $2$.}
+A classical theorem due to Lagrange (1773) and Gauss (1801) states that the algorithm terminates with a \emph{Gauss-reduced} basis $(\mathbf{b}_1,\mathbf{b}_2)$ satisfying
+\[
+\|\mathbf{b}_1\|\le \|\mathbf{b}_2\|,
+\qquad
+|\langle \mathbf{b}_1,\mathbf{b}_2\rangle| \le \tfrac12\,\|\mathbf{b}_1\|^2.
+\]
+In dimension $2$, these conditions are equivalent to $\mathbf{b}_1$ being a shortest nonzero vector of the lattice, i.e.,
+$\|\mathbf{b}_1\|=\lambda_1(L)$.
+Moreover, $\mathbf{b}_2$ is the shortest lattice vector that is linearly independent from $\mathbf{b}_1$.
+
+
+\paragraph{Implication for the pouring problem.}
+Since our orthogonal lattice $\cL(\mathbf{v})\subset\bZ^3$ has rank $2$, applying Lagrange--Gauss reduction to any basis of $\cL(\mathbf{v})$ produces the shortest vector in the lattice.
+
+\section{The Lattice Algorithm}
+
+We now describe a concrete descent procedure in the dual space that matches the lattice viewpoint of Section~\ref{sec:lattice}.
+Unlike greedy strategies that operate directly on vessel contents, the algorithm maintains an integer relation $\mathbf{u}\cdot\mathbf{v}=0$ and uses admissible pouring moves.
+
+\subsection{Guiding principle}
+
+Recall that a pour affecting vessels $i$ and $j$ corresponds (on the dual coefficients) to an averaging operation
+$u_i \leftarrow (u_i+u_j)/2$ (or the symmetric update), which is integral exactly when $u_i\equiv u_j\pmod 2$.
+The algorithm therefore enforces two constraints at every iteration:
+
+\begin{enumerate}
+\item \textbf{Physical admissibility:} the selected pair must satisfy $v_i\le v_j$ so that the updated content $v_j-v_i$ stays nonnegative.
+\item \textbf{Parity:} the selected coefficients must satisfy $u_i\equiv u_j\pmod 2$ so that the induced dual update stays in $\bZ^3$.
+\end{enumerate}
+
+\subsection{Algorithm}
+
+Informally, the algorithm iterates the following rule.
+At each step, we look for a \emph{legal} move, i.e., a pair of indices $(i,j)$ such that the corresponding dual coefficients have the same parity ($u_i\equiv u_j\pmod 2$), so that the induced averaging update remains integral.
+
+
+\begin{algorithm}[H]
+\caption{Semi-Algorithm: Lattice descent (three vessels)}
+\label{alg:lattice_descent}
+\begin{algorithmic}[1]
+\Require Initial volumes $\mathbf{v}=(a,b,c)\in\bN^3$
+\Ensure A state with at least one empty vessel
+
+\State \textbf{Initialize:} $\mathbf{u} \leftarrow (-b,\,a,\,0)$
+
+\While{all entries of $\mathbf{v}$ are nonzero}
+    \For{each $(i,j)$ with $i\neq j$}
+        \State if $v_i > v_j$ then \textbf{continue} \Comment{\textbf{Physical check}}
+        \State if $u_i \not\equiv u_j \pmod 2$ then \textbf{continue} \Comment{\textbf{Parity check}}
+        \State $t \leftarrow v_i$
+        \State $v_i \leftarrow 2t$; \ $v_j \leftarrow v_j - t$
+        \State $u_i \leftarrow (u_i+u_j)/2$
+        \State \textbf{break}
+    \EndFor
+\EndWhile
+
+\Return $\mathbf{v}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}[Halving of a coefficient gap]
+\label{prop:halving}
+Let $\mathbf{u}=(x,y,z)\in\bZ^3$ with $x,y,z$ pairwise distinct.
+At any step of the descent, if we perform a legal dual update averaging two coordinates (say $u_i\leftarrow (u_i+u_j)/2$ with $u_i\equiv u_j\pmod 2$), then the corresponding gap is divided by $2$:
+\[
+|u_i-u_j| \longmapsto \frac{|u_i-u_j|}{2}.
+\]
+In particular, since $x,y,z$ are all different, one of the three nonzero quantities $|x-y|$, $|x-z|$, or $|y-z|$ is divided by $2$ at each step.
+\end{proposition}
+
+\begin{proof}
+Assume we average the first two coordinates.
+Then $x'=(x+y)/2$ and $y'=y$, hence
+\[
+|x'-y'| = \left|\frac{x+y}{2}-y\right| = \frac{|x-y|}{2}.
+\]
+Because $x\neq y$, we have $|x-y|\neq 0$, so this is a genuine division by $2$.
+The other choices of coordinate pairs are identical.
+\end{proof}
+
+\begin{proposition}[A short step bound (semi-algorithm)]
+Consider the descent procedure as a semi-algorithm: it may enter an infinite loop (e.g., when it reaches a state where two of the coordinates are equal and nonzero), but if it terminates then it does so in less than $3\log_2(n)$ steps.
+\end{proposition}
+
+\begin{remark}
+The algorithm is designed so that the invariant
+\[
+\mathbf{u}\cdot \mathbf{v}=xa+yb+zc=0
+\]
+is preserved at every step.
+Consequently, reaching a dual vector with two zero coordinates is an immediate certificate that a vessel has been emptied.
+Indeed, if at some point we have $\mathbf{u}=(x,0,0)$ with $x\neq 0$, then the invariant gives $xa=0$, hence $a=0$.
+Similarly, $\mathbf{u}=(0,y,0)$ implies $b=0$, and $\mathbf{u}=(0,0,z)$ implies $c=0$.
+\end{remark}
+
+\begin{proof}
+Assume the semi-algorithm never reaches a bad state.
+Consider the dual vector $\mathbf{u}=(x,y,z)$ and define the quantity
+\[
+\Delta(\mathbf{u})=|x-y|\,|x-z|\,|y-z|.
+\]
+As long as $x,y,z$ are pairwise distinct, all three factors are nonzero, hence $\Delta(\mathbf{u})\ge 1$.
+By Proposition~\ref{prop:halving}, at each legal update one of the three gaps is divided by $2$, and the other two gaps are unchanged; therefore $\Delta(\mathbf{u})$ is divided by $2$ at every step where the coordinates remain pairwise distinct.
+
+With the initialization $\mathbf{u}_0=(-b,a,0)$ we have
+\[
+\Delta(\mathbf{u}_0)=|(-b)-a|\,|(-b)-0|\,|a-0|=(a+b)ab \le n^3.
+\]
+After $t$ steps we thus have $1\le \Delta(\mathbf{u}_t)\le n^3/2^t$, which implies $t\le 3\log_2(n)$.
+\end{proof}
+
+\subsection{Conclusion}
+
+The original goal of our approach was as follows: compute a shortest vector $\mathbf{u}\in\cL(\mathbf{v})$ using Lagrange--Gauss reduction, and then use $\mathbf{u}$ to guide the pouring process via admissible dual updates.
+
+In practice, however, this start from the shortest vector approach fails for some cases.
+In roughly $10\%$ of randomly generated instances we observed a parity problem: we reach a configuration of the form
+\begin{equation*}
+\mathbf{u}=(x,x,z),
+\end{equation*}
+where $x$ and $z$ have different parity.
+In that situation we reach an infinite loop, since any move involving the third coordinate violates the parity constraint, while averaging the first two coordinates leaves the state unchanged.
+
+To mitigate this issue, we changed the initialization of the dual coefficients and used
+\begin{equation*}
+\mathbf{u}_0 = (-b,\,a,\,0)
+\end{equation*}
+instead.
+Experimentally, this choice eliminated the infinite-loop behavior on all instances we tested.
+At present we are unable to justify rigorously that this modified descent always terminates (i.e., that it never reaches a state of the form $(x,x,z)$).
+
+While this is not a definitive proof of a $O(\log n)$ upper bound (due to possible infinite loops), it suggests that the approach is at least in the right direction.
+Our hope is that with a good initialization, the semi-algorithm never reaches the parity problem discussed earlier. Or maybe we can find a way to escape the infinite loop with another argument.
+
+\begin{thebibliography}{9}
+\bibitem{frei} F. Frei, P. Rossmanith, and D. Wehner. An open pouring problem. In \emph{Proc. 10th International Conference on Fun with Algorithms (FUN 2021)}, pages 14:1--14:9, 2021.
+\bibitem{boppana-video} R. Boppana. \emph{The Simple Problem That Stumped 99\%} (video). YouTube, \url{https://www.youtube.com/watch?v=dI2RVGKqpCE}.
+\end{thebibliography}
+
+\end{document}
